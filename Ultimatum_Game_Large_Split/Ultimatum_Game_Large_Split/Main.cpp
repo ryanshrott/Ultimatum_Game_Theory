@@ -1,0 +1,162 @@
+// This program will extend the idea of team strategies to a broader scope in the ultimatum game 
+
+#include "TeamArray.h"
+#include <ctime> // for random number generator 
+#include <random>
+#include <iterator>
+#include <vector>
+#include <algorithm>
+#include <type_traits>
+
+
+#define rounds 10000000 // macro for number of games played 
+
+void basic(TeamArray& teamData);
+void evolution(TeamArray& teamData);
+
+int main()
+{
+
+	int give[11];
+	int min_accept[11]; 
+
+	// Remark: There will be 11*11 possible strategies and therefore 121 teams 
+
+	TeamArray teamData(11 * 11);
+
+	for (int a = 0; a < 11; a++)
+	{
+		give[a] = 5 * a;
+	}
+
+	for (int g = 0; g < 11; g++)
+	{
+		min_accept[g] = 5 * g;
+	}
+
+	int i = 0;
+	for (int a = 0; a < 11; a++)
+	{
+		for (int g = 0; g < 11; g++)
+		{
+			
+			Team team(give[a], min_accept[g], false, 0); // assigns 121 teams into the teamData array 
+			Team temp = team;
+			teamData[i] = temp;
+			i++;
+		}
+	}
+
+	// Implementation 1: BASIC MODEL: Choose a random team, then choose another random team, then call the interact function. Repeat. 
+
+	//basic(teamData);
+
+	// Implementation 2: Evolutionary Model: Same as basic model except probability of being choosen becomes a function of current sum 
+
+	//evolution(teamData);
+
+	return 0;
+} // END MAIN()
+
+void basic(TeamArray& teamData) //Choose a random team, then choose another random team, then call the interact function.Repeat.
+{
+	default_random_engine randomGenerator((unsigned int)time(NULL));
+	uniform_int_distribution<int> rand120(0, 120);
+
+	int* RandA;
+	int* RandB;
+
+	RandA = new int[rounds];
+	RandB = new int[rounds];
+
+	for (int i = 0; i < rounds; ++i)
+	{
+		RandA[i] = rand120(randomGenerator); // generates random numbers from 0 to 120 (121 elements)
+	}
+
+	for (int i = 0; i < rounds; ++i)
+	{
+		RandB[i] = rand120(randomGenerator); // generates random numbers from 0 to 120 (121 elements)
+	}
+
+	for (int i = 0; i < rounds; i++)
+	{
+		interact(teamData[RandA[i]], teamData[RandB[i]]);
+	}
+
+	delete[] RandA;
+	delete[] RandB;
+
+	cout << "The richest team in the BASIC MODEL is: " << teamData.richest() << endl;
+	cout << "The poorest team in the BASIC MODEL is: " << teamData.poorest() << endl;
+}
+
+template< class InputIt >
+
+void evolution(TeamArray& teamData) //Same as basic model except probability of being choosen becomes a function of current sum 
+{
+	default_random_engine randomGenerator((unsigned int)time(NULL));
+	uniform_int_distribution<int> uniform(0, 120);
+
+	int* RandA;
+	int* RandB;
+
+	RandA = new int[rounds];
+	RandB = new int[rounds];
+
+	// Time Period 1
+
+	for (int i = 0; i < rounds / 10; ++i)
+	{
+		RandA[i] = uniform(randomGenerator); // generates random numbers from 0 to 120 (121 elements)
+	}
+
+	for (int i = 0; i < rounds / 10; ++i)
+	{
+		RandB[i] = uniform(randomGenerator); // generates random numbers from 0 to 120 (121 elements)
+	}
+
+	for (int i = 0; i < rounds / 10; i++)
+	{
+		interact(teamData[RandA[i]], teamData[RandB[i]]);
+	}
+
+	delete[] RandA;
+	delete[] RandB;
+
+	// Later time periods (ERA 2 through 10)
+
+	// The inside of this loop does the rest of the interactions 
+	for (int t = 1; t < 10; ++t) // looping through the ERA's
+	{
+		// Intializing distribution 
+		std::vector< int> weights(121);
+		for (int i = 0; i < 121; i++)
+		{
+			weights[i] = (teamData[i]).S();
+		}
+
+		std::discrete_distribution<int&> dist(weights.begin(), weights.end());
+
+		for (int i = t* (rounds / 10); i < (t+1) * (rounds / 10); ++i)
+		{
+			RandA[i] = dist(randomGenerator); 
+		}
+
+		for (int i = t* (rounds / 10); i < (t + 1) * (rounds / 10); ++i)
+		{
+			RandB[i] = dist(randomGenerator); 
+		}
+
+		for (int i = t* (rounds / 10); i < (t + 1) * (rounds / 10); ++i)
+		{
+			interact(teamData[RandA[i]], teamData[RandB[i]]);
+		}
+
+		delete[] RandA;
+		delete[] RandB;
+	}
+
+	cout << "The richest team in the EVOLUTION MODEL is: " << teamData.richest() << endl;
+	cout << "The poorest team in the EVOLUTION MODEL is: " << teamData.poorest() << endl;
+}
